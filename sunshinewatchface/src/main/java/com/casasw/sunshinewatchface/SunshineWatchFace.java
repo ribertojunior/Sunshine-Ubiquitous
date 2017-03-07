@@ -37,6 +37,7 @@ import android.view.WindowInsets;
 
 import java.lang.ref.WeakReference;
 import java.util.Calendar;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -47,6 +48,8 @@ import java.util.concurrent.TimeUnit;
 public class SunshineWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
+    private static final Typeface ITALIC_TYPEFACE =
+            Typeface.create(Typeface.SANS_SERIF, Typeface.ITALIC);
 
     /**
      * Update rate in milliseconds for interactive mode. We update once a second since seconds are
@@ -88,7 +91,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
-        Paint mTextPaint;
+        Paint mHoursPaint, mMinutesPaint;
+        Paint mDatePaint;
         boolean mAmbient;
         Calendar mCalendar;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -122,8 +126,12 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(resources.getColor(R.color.background));
 
-            mTextPaint = new Paint();
-            mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mHoursPaint = new Paint();
+            mHoursPaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
+            mMinutesPaint = new Paint();
+            mMinutesPaint = createTextPaint(resources.getColor(R.color.digital_text), ITALIC_TYPEFACE);
+            mDatePaint = new Paint();
+            mDatePaint = createTextPaint(resources.getColor(R.color.digital_text), ITALIC_TYPEFACE);
 
             mCalendar = Calendar.getInstance();
         }
@@ -134,13 +142,15 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             super.onDestroy();
         }
 
-        private Paint createTextPaint(int textColor) {
+        private Paint createTextPaint(int textColor, Typeface typeface) {
             Paint paint = new Paint();
             paint.setColor(textColor);
-            paint.setTypeface(NORMAL_TYPEFACE);
+            paint.setTypeface(typeface);
             paint.setAntiAlias(true);
             return paint;
         }
+
+
 
         @Override
         public void onVisibilityChanged(boolean visible) {
@@ -185,12 +195,15 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             // Load resources that have alternate values for round watches.
             Resources resources = SunshineWatchFace.this.getResources();
             boolean isRound = insets.isRound();
-            mXOffset = resources.getDimension(isRound
-                    ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
+            mXOffset = resources.getDimension(isRound ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
+
             float textSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            mHoursPaint.setTextSize(textSize);
+            mMinutesPaint.setTextSize(textSize);
+            textSize = resources.getDimension(R.dimen.date_text_size);
+            mDatePaint.setTextSize(textSize);
         }
 
         @Override
@@ -211,7 +224,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             if (mAmbient != inAmbientMode) {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
-                    mTextPaint.setAntiAlias(!inAmbientMode);
+                    mHoursPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -234,12 +247,25 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
-            String text = mAmbient
-                    ? String.format("%d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE))
-                    : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            String text = String.format(Locale.ENGLISH,"%d:", mCalendar.get(Calendar.HOUR));
+            //canvas.drawText(text, mXOffset, mYOffset, mHoursPaint);
+            canvas.drawText(text, bounds.centerX()-getResources().getDimension(R.dimen.digital_text_size), mYOffset, mHoursPaint);
+
+            text = String.format(Locale.ENGLISH,"%02d", mCalendar.get(Calendar.MINUTE));
+            //canvas.drawText(text, mXOffset+getResources().getDimension(R.dimen.digital_text_size), mYOffset, mMinutesPaint);
+            canvas.drawText(text, bounds.centerX(), mYOffset, mMinutesPaint);
+
+            text = "FRI, JUL 14 2017";
+            canvas.drawText(text, bounds.centerX() - (getResources().getDimension(R.dimen.date_text_size)*4),
+                    mYOffset + getResources().getDimension(R.dimen.date_text_size)  , mDatePaint);
+
+
+            //(float startX, float startY, float stopX, float stopY, Paint paint)
+            Paint line = new Paint();
+            line.setColor(getColor(R.color.digital_text));
+            float size = getResources().getDimension(R.dimen.line_size);
+            canvas.drawLine(bounds.centerX() - size, bounds.centerY(),
+                    bounds.centerX() + size, bounds.centerY(), line );
         }
 
         /**
