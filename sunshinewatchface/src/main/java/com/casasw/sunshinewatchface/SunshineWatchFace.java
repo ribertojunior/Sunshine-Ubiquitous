@@ -21,6 +21,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -33,7 +35,6 @@ import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
-
 
 import java.lang.ref.WeakReference;
 import java.util.Calendar;
@@ -50,6 +51,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
     private static final Typeface ITALIC_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.ITALIC);
+    private static final Typeface BOLD_TYPEFACE =
+            Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD);
 
     /**
      * Update rate in milliseconds for interactive mode. We update once a second since seconds are
@@ -61,6 +64,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
      * Handler message id for updating the time periodically in interactive mode.
      */
     private static final int MSG_UPDATE_TIME = 0;
+    private static final String TAG = SunshineWatchFace.class.getSimpleName();
 
     @Override
     public Engine onCreateEngine() {
@@ -90,9 +94,10 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
     private class Engine extends CanvasWatchFaceService.Engine {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
-        Paint mBackgroundPaint;
+        Paint mBackgroundPaint, mIconPaint;
         Paint mHoursPaint, mMinutesPaint;
-        Paint mDatePaint;
+        Paint mDatePaint, mHighPaint, mLowPaint;
+        Bitmap mIcon;
         boolean mAmbient;
         Calendar mCalendar;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -126,12 +131,18 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(resources.getColor(R.color.background));
 
+            mIconPaint = new Paint();
+            mHighPaint = new Paint();
+            mHighPaint = createTextPaint(resources.getColor(R.color.digital_text), BOLD_TYPEFACE);
+            mLowPaint  = new Paint();
+            mLowPaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
+
             mHoursPaint = new Paint();
-            mHoursPaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
+            mHoursPaint = createTextPaint(resources.getColor(R.color.digital_text), BOLD_TYPEFACE);
             mMinutesPaint = new Paint();
-            mMinutesPaint = createTextPaint(resources.getColor(R.color.digital_text), ITALIC_TYPEFACE);
+            mMinutesPaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
             mDatePaint = new Paint();
-            mDatePaint = createTextPaint(resources.getColor(R.color.digital_text), ITALIC_TYPEFACE);
+            mDatePaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
 
             mCalendar = Calendar.getInstance();
         }
@@ -202,6 +213,9 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
             mHoursPaint.setTextSize(textSize);
             mMinutesPaint.setTextSize(textSize);
+            textSize = getResources().getDimension(R.dimen.temp_text_size);
+            mHighPaint.setTextSize(textSize);
+            mLowPaint.setTextSize(textSize);
             textSize = resources.getDimension(R.dimen.date_text_size);
             mDatePaint.setTextSize(textSize);
         }
@@ -248,24 +262,65 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mCalendar.setTimeInMillis(now);
 
             String text = String.format(Locale.ENGLISH,"%d:", mCalendar.get(Calendar.HOUR));
-            //canvas.drawText(text, mXOffset, mYOffset, mHoursPaint);
-            canvas.drawText(text, bounds.centerX()-getResources().getDimension(R.dimen.digital_text_size), mYOffset, mHoursPaint);
-
+            //canvas.drawText(text, mXOffset, mYOffset, mHoursPaint); -digital text size
+            canvas.drawText(text,
+                    bounds.centerX()-mHoursPaint.measureText(text),
+                    getResources().getDimension(R.dimen.vertical_margin),
+                    mHoursPaint);
+            //Log.d(TAG, "onDraw: x: "+bounds.centerX() +" y: "+bounds.centerY());
+            //Log.d(TAG, "onDraw: Text size"+getResources().getDimension(R.dimen.digital_text_size));
             text = String.format(Locale.ENGLISH,"%02d", mCalendar.get(Calendar.MINUTE));
             //canvas.drawText(text, mXOffset+getResources().getDimension(R.dimen.digital_text_size), mYOffset, mMinutesPaint);
-            canvas.drawText(text, bounds.centerX(), mYOffset, mMinutesPaint);
+            canvas.drawText(text,
+                    bounds.centerX(),
+                    getResources().getDimension(R.dimen.vertical_margin),
+                    mMinutesPaint);
 
-            text = "FRI, JUL 14 2017";
-            canvas.drawText(text, bounds.centerX() - (getResources().getDimension(R.dimen.date_text_size)*4),
-                    mYOffset + getResources().getDimension(R.dimen.date_text_size)  , mDatePaint);
+            if (!isInAmbientMode()) {
+                text = "FRI, JUL 14 2017";
+                float posX = bounds.centerX()- (mDatePaint.measureText(text)/2);
+                canvas.drawText(text,
+                        posX,
+                        bounds.centerY(),
+                        mDatePaint);
 
 
-            //(float startX, float startY, float stopX, float stopY, Paint paint)
-            Paint line = new Paint();
-            line.setColor(getColor(R.color.digital_text));
-            float size = getResources().getDimension(R.dimen.line_size);
-            canvas.drawLine(bounds.centerX() - size, bounds.centerY(),
-                    bounds.centerX() + size, bounds.centerY(), line );
+                //(float startX, float startY, float stopX, float stopY, Paint paint)
+                Paint line = new Paint();
+                line.setColor(getColor(R.color.digital_text));
+                float size = getResources().getDimension(R.dimen.line_size);
+                canvas.drawLine(bounds.centerX() - size,
+                        bounds.centerY() + getResources().getDimension(R.dimen.line_top_padding),
+                        bounds.centerX() + size,
+                        bounds.centerY() + getResources().getDimension(R.dimen.line_top_padding),
+                        line );
+                mIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_clear);
+                mIcon = Bitmap.createScaledBitmap(mIcon,
+                        (int) getResources().getDimension(R.dimen.image_size),
+                        (int) getResources().getDimension(R.dimen.image_size),
+                        true);
+
+                canvas.drawBitmap(mIcon,
+                        posX - getResources().getDimension(R.dimen.image_end_padding),
+                        bounds.centerY()+ getResources().getDimension(R.dimen.image_top_padding),
+                        mIconPaint);
+                text = "25º";
+                posX = (float) (posX + (getResources().getDimension(R.dimen.image_size)/2) + (mHighPaint.measureText(text)*0.25));
+                canvas.drawText(text,
+                        posX,
+                        bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
+                        mHighPaint
+                );
+                text = "16°";
+                posX = posX +
+                        (mLowPaint.measureText(text)) +
+                        getResources().getDimension(R.dimen.temp_inner_spacing);
+                canvas.drawText(text,
+                        posX,
+                        bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
+                        mLowPaint
+                );
+            }
         }
 
         /**
