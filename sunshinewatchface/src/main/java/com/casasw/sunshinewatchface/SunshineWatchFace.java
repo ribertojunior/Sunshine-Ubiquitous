@@ -349,7 +349,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
-            String text = String.format(Locale.ENGLISH,"%02d:", mCalendar.get(Calendar.HOUR));
+            String text = String.format(Locale.ENGLISH,"%02d:", mCalendar.get(Calendar.HOUR_OF_DAY));
 
             canvas.drawText(text,
                     bounds.centerX()-mHoursPaint.measureText(text)+(mHighPaint.measureText(" ")),
