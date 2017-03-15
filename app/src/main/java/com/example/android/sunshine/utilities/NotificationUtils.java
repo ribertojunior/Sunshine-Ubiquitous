@@ -32,7 +32,7 @@ public class NotificationUtils {
     public static final String[] WEATHER_NOTIFICATION_PROJECTION = {
             WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
             WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
-            WeatherContract.WeatherEntry.COLUMN_MIN_TEMP,
+            WeatherContract.WeatherEntry.COLUMN_MIN_TEMP
     };
 
     /*
@@ -80,15 +80,17 @@ public class NotificationUtils {
 
             if (todayWeather[0] != weatherId ||
                     todayWeather[1] != (int) Math.floor(high) ||
-                    todayWeather[2] != (int) Math.floor(low)) {
-                if (BuildConfig.DEBUG) {
-                    Log.d(TAG, "notifyUserOfNewWeather: New today weather");
-                }
+                    todayWeather[2] != (int) Math.floor(low) ||
+                    BuildConfig.DEBUG) {
                 SunshinePreferences.setTodayWeather(context, weatherId, (int) Math.floor(high), (int) Math.floor(low));
                 String message = "";
                 message = "" + weatherId;
                 message = message + " " + (int) Math.floor(high);
                 message = message + " " + (int) Math.floor(low);
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "notifyUserOfNewWeather: New today weather");
+                    //message = "951 44 00";
+                }
                 TodayWeatherSender sender = new TodayWeatherSender(context, message);
                 sender.connectAndSend();
             }
