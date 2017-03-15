@@ -33,10 +33,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import com.google.android.gms.wearable.MessageEvent;
+import com.google.android.gms.wearable.WearableListenerService;
+
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -97,9 +102,12 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         Paint mBackgroundPaint, mIconPaint;
         Paint mHoursPaint, mMinutesPaint;
         Paint mDatePaint, mHighPaint, mLowPaint;
+        String mHighText, mLowText;
+        int mWeatherId;
         Bitmap mIcon;
         boolean mAmbient;
         Calendar mCalendar;
+        SimpleDateFormat mDateFormat;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -145,6 +153,68 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mDatePaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
 
             mCalendar = Calendar.getInstance();
+            mHighText = mLowText = "69°";
+            mWeatherId = 951;
+            mIcon = BitmapFactory.decodeResource(getResources(), getSmallArtResourceIdForWeatherCondition(mWeatherId));
+            mIcon = Bitmap.createScaledBitmap(mIcon,
+                    (int) getResources().getDimension(R.dimen.image_size),
+                    (int) getResources().getDimension(R.dimen.image_size),
+                    true);
+            //"FRI, JUL 14 2017";
+            mDateFormat = new SimpleDateFormat("EEE, MMM dd yyyy", Locale.ENGLISH);
+        }
+
+
+        /**
+         * Helper method to provide the icon resource id according to the weather condition id returned
+         * by the OpenWeatherMap call. This method is very similar to
+         *
+         *
+         * The difference between these two methods is that this method provides smaller assets, used
+         * in the list item layout for a "future day", as well as
+         *
+         * @param weatherId from OpenWeatherMap API response
+         *                  See http://openweathermap.org/weather-conditions for a list of all IDs
+         *
+         * @return resource id for the corresponding icon. -1 if no relation is found.
+         */
+        public int getSmallArtResourceIdForWeatherCondition(int weatherId) {
+
+        /*
+         * Based on weather code data for Open Weather Map.
+         */
+            if (weatherId >= 200 && weatherId <= 232) {
+                return R.drawable.ic_storm;
+            } else if (weatherId >= 300 && weatherId <= 321) {
+                return R.drawable.ic_light_rain;
+            } else if (weatherId >= 500 && weatherId <= 504) {
+                return R.drawable.ic_rain;
+            } else if (weatherId == 511) {
+                return R.drawable.ic_snow;
+            } else if (weatherId >= 520 && weatherId <= 531) {
+                return R.drawable.ic_rain;
+            } else if (weatherId >= 600 && weatherId <= 622) {
+                return R.drawable.ic_snow;
+            } else if (weatherId >= 701 && weatherId <= 761) {
+                return R.drawable.ic_fog;
+            } else if (weatherId == 761 || weatherId == 771 || weatherId == 781) {
+                return R.drawable.ic_storm;
+            } else if (weatherId == 800) {
+                return R.drawable.ic_clear;
+            } else if (weatherId == 801) {
+                return R.drawable.ic_light_clouds;
+            } else if (weatherId >= 802 && weatherId <= 804) {
+                return R.drawable.ic_cloudy;
+            } else if (weatherId >= 900 && weatherId <= 906) {
+                return R.drawable.ic_storm;
+            } else if (weatherId >= 958 && weatherId <= 962) {
+                return R.drawable.ic_storm;
+            } else if (weatherId >= 951 && weatherId <= 957) {
+                return R.drawable.ic_clear;
+            }
+
+            Log.e(TAG, "Unknown Weather: " + weatherId);
+            return R.drawable.ic_storm;
         }
 
         @Override
@@ -277,7 +347,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                     mMinutesPaint);
 
             if (!isInAmbientMode()) {
-                text = "FRI, JUL 14 2017";
+                text = mDateFormat.format(mCalendar.getTime());
                 float posX = bounds.centerX()- (mDatePaint.measureText(text)/2);
                 canvas.drawText(text,
                         posX,
@@ -294,24 +364,20 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                         bounds.centerX() + size,
                         bounds.centerY() + getResources().getDimension(R.dimen.line_top_padding),
                         line );
-                mIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_clear);
-                mIcon = Bitmap.createScaledBitmap(mIcon,
-                        (int) getResources().getDimension(R.dimen.image_size),
-                        (int) getResources().getDimension(R.dimen.image_size),
-                        true);
+
 
                 canvas.drawBitmap(mIcon,
                         posX - getResources().getDimension(R.dimen.image_end_padding),
                         bounds.centerY()+ getResources().getDimension(R.dimen.image_top_padding),
                         mIconPaint);
-                text = "25º";
+                text = mHighText;
                 posX = (float) (posX + (getResources().getDimension(R.dimen.image_size)/2) + (mHighPaint.measureText(text)*0.25));
                 canvas.drawText(text,
                         posX,
                         bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
                         mHighPaint
                 );
-                text = "16°";
+                text = mLowText;
                 posX = posX +
                         (mLowPaint.measureText(text)) +
                         getResources().getDimension(R.dimen.temp_inner_spacing);
@@ -353,6 +419,21 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                         - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
+        }
+    }
+
+    /**
+     * Sunshine Listener Service receives a message from phone
+     */
+
+    public static class SunshineListenerService extends WearableListenerService {
+        public static final String TAG = SunshineListenerService.class.getSimpleName();
+        @Override
+        public void onMessageReceived(MessageEvent messageEvent) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "onMessageReceived: "+messageEvent.getPath());
+            }
+
         }
     }
 }

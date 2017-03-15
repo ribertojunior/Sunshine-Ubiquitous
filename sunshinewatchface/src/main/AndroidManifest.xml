@@ -26,7 +26,7 @@
             </intent-filter>
         </service>
 
-        <service android:name=".SunshineListenerService">
+        <service android:name=".SunshineWatchFace$SunshineListenerService">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
                 <data android:scheme="wear" android:host="*" />

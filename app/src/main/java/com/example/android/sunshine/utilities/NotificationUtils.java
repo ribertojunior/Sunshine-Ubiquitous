@@ -12,11 +12,16 @@ import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 
+import com.example.android.sunshine.BuildConfig;
 import com.example.android.sunshine.DetailActivity;
 import com.example.android.sunshine.R;
+import com.example.android.sunshine.TodayWeatherSender;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
+
+import static android.content.ContentValues.TAG;
 
 public class NotificationUtils {
 
@@ -45,6 +50,50 @@ public class NotificationUtils {
      * arbitrary and can be set to whatever you like. 3004 is in no way significant.
      */
     private static final int WEATHER_NOTIFICATION_ID = 3004;
+
+    public static void sendWeatherToWatchFace(Context context) {
+        /* Build the URI for today's weather in order to show up to date data in notification */
+        Uri todaysWeatherUri = WeatherContract.WeatherEntry
+                .buildWeatherUriWithDate(SunshineDateUtils.normalizeDate(System.currentTimeMillis()));
+
+        /*
+         * The MAIN_FORECAST_PROJECTION array passed in as the second parameter is defined in our WeatherContract
+         * class and is used to limit the columns returned in our cursor.
+         */
+        Cursor todayWeatherCursor = context.getContentResolver().query(
+                todaysWeatherUri,
+                WEATHER_NOTIFICATION_PROJECTION,
+                null,
+                null,
+                null);
+        if (todayWeatherCursor.moveToFirst()) {
+
+            /* Weather ID as returned by API, used to identify the icon to be used */
+            int weatherId = todayWeatherCursor.getInt(INDEX_WEATHER_ID);
+            double high = todayWeatherCursor.getDouble(INDEX_MAX_TEMP);
+            double low = todayWeatherCursor.getDouble(INDEX_MIN_TEMP);
+
+            /*
+            * Store today weather
+            * */
+            int[] todayWeather = SunshinePreferences.getTodayWeather(context);
+
+            if (todayWeather[0] != weatherId ||
+                    todayWeather[1] != (int) Math.floor(high) ||
+                    todayWeather[2] != (int) Math.floor(low)) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "notifyUserOfNewWeather: New today weather");
+                }
+                SunshinePreferences.setTodayWeather(context, weatherId, (int) Math.floor(high), (int) Math.floor(low));
+                String message = "";
+                message = "" + weatherId;
+                message = message + " " + high;
+                message = message + " " + low;
+                TodayWeatherSender sender = new TodayWeatherSender(context, message);
+                sender.connectAndSend();
+            }
+        }
+    }
 
     /**
      * Constructs and displays a notification for the newly updated weather for today.

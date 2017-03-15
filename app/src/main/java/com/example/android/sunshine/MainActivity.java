@@ -16,13 +16,10 @@
  */
 package com.example.android.sunshine;
 
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -39,20 +36,10 @@ import android.widget.ProgressBar;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.sync.SunshineSyncUtils;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallbacks;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.wearable.MessageApi;
-import com.google.android.gms.wearable.NodeApi;
-import com.google.android.gms.wearable.Wearable;
-
-import static com.example.android.sunshine.utilities.NotificationUtils.INDEX_MAX_TEMP;
-import static com.example.android.sunshine.utilities.NotificationUtils.INDEX_MIN_TEMP;
 
 public class MainActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor>,
-        ForecastAdapter.ForecastAdapterOnClickHandler,
-        GoogleApiClient.ConnectionCallbacks{
+        ForecastAdapter.ForecastAdapterOnClickHandler{
 
     private final String TAG = MainActivity.class.getSimpleName();
 
@@ -92,18 +79,6 @@ public class MainActivity extends AppCompatActivity implements
     private int mPosition = RecyclerView.NO_POSITION;
 
     private ProgressBar mLoadingIndicator;
-
-    private String mNodeId;
-    private String mMessage;
-    private static final long CONNECTION_TIME_OUT_MS = 100;
-    private GoogleApiClient mClient;
-
-    private GoogleApiClient getGoogleApiClient(Context context) {
-        return new GoogleApiClient.Builder(context)
-                .addApi(Wearable.API)
-                .addConnectionCallbacks(this)
-                .build();
-    }
 
 
     @Override
@@ -179,39 +154,7 @@ public class MainActivity extends AppCompatActivity implements
         getSupportLoaderManager().initLoader(ID_FORECAST_LOADER, null, this);
 
         SunshineSyncUtils.initialize(this);
-
-        if (savedInstanceState == null )
-            mMessage = "";
-        if (BuildConfig.DEBUG){
-            Log.d(TAG, "onCreate - Message: "+mMessage);
-        }
-        initApi();
-
-    }
-
-    /**
-     * Initializes the GoogleApiClient and gets the Node ID of the connected device.
-     */
-    private void initApi() {
-        mClient = getGoogleApiClient(this);
-        mClient.connect();
-        if (mClient.isConnected())
-            Log.d(TAG, "initApi: Successful.");
-        else
-            Log.d(TAG, "initApi: Failed.");
-
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        if (BuildConfig.DEBUG){
-            Log.d(TAG, "onConnected: Connected.");
-        }
-        retrieveDeviceNode();
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
+        SunshineSyncUtils.startImmediateSync(this);
 
     }
 
@@ -296,26 +239,9 @@ public class MainActivity extends AppCompatActivity implements
 
 
         mForecastAdapter.swapCursor(data);
-        setMessage(data);
         if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
         mRecyclerView.smoothScrollToPosition(mPosition);
         if (data.getCount() != 0) showWeatherDataView();
-    }
-
-    private void setMessage(Cursor data) {
-        if (data.moveToFirst()) {
-            String message = "";
-            message = "" + data.getString(INDEX_WEATHER_CONDITION_ID);
-            message = message + " " + data.getDouble(INDEX_MAX_TEMP);
-            message = message + " " + data.getDouble(INDEX_MIN_TEMP);
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "setMessage: "+message);
-            }
-            if (!mMessage.equals(message)) {
-                mMessage = message;
-                sendMessage();
-            }
-        }
     }
 
     /**
@@ -419,59 +345,5 @@ public class MainActivity extends AppCompatActivity implements
 
         return super.onOptionsItemSelected(item);
     }
-
-    private void retrieveDeviceNode() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Wearable.NodeApi.getConnectedNodes(mClient).setResultCallback(new ResultCallbacks<NodeApi.GetConnectedNodesResult>() {
-                    @Override
-                    public void onSuccess(@NonNull NodeApi.GetConnectedNodesResult getConnectedNodesResult) {
-                        if (BuildConfig.DEBUG){
-                            Log.d(TAG, "onSuccess: Success.");
-                        }
-                        mNodeId = getConnectedNodesResult.getNodes().get(0).getId();
-                        sendMessage();
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull Status status) {
-                        if (BuildConfig.DEBUG){
-                            Log.d(TAG, "onFailure: Failed.");
-                        }
-                    }
-                });
-            }
-        }).start();
-    }
-
-    private void sendMessage() {
-        if (mNodeId != null) {
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "sendMessage - Sending: "+mMessage);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Wearable.MessageApi.sendMessage(mClient, mNodeId, mMessage, null).setResultCallback(new ResultCallbacks<MessageApi.SendMessageResult>() {
-                        @Override
-                        public void onSuccess(@NonNull MessageApi.SendMessageResult sendMessageResult) {
-                            if (BuildConfig.DEBUG)
-                                Log.d(TAG, "onSuccess - sendMessage: "+sendMessageResult.getRequestId());
-                        }
-
-                        @Override
-                        public void onFailure(@NonNull Status status) {
-                            if (BuildConfig.DEBUG){
-                                Log.d(TAG, "onFailure - sendMessage: " + status.getStatusMessage());
-                            }
-
-                        }
-                    });
-                }
-            }).start();
-        }
-    }
-
-    
 
 }
