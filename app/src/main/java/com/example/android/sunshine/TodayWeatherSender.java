@@ -15,6 +15,7 @@ import com.google.android.gms.wearable.Wearable;
 
 /**
  * Created by Junior on 15/03/2017.
+ * Class to handle message sending
  */
 
 public class TodayWeatherSender implements GoogleApiClient.ConnectionCallbacks {

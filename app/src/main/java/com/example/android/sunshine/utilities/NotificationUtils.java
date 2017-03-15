@@ -87,8 +87,8 @@ public class NotificationUtils {
                 SunshinePreferences.setTodayWeather(context, weatherId, (int) Math.floor(high), (int) Math.floor(low));
                 String message = "";
                 message = "" + weatherId;
-                message = message + " " + high;
-                message = message + " " + low;
+                message = message + " " + (int) Math.floor(high);
+                message = message + " " + (int) Math.floor(low);
                 TodayWeatherSender sender = new TodayWeatherSender(context, message);
                 sender.connectAndSend();
             }

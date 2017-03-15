@@ -20,6 +20,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -44,6 +45,7 @@ import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -96,7 +98,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+    private class Engine extends CanvasWatchFaceService.Engine implements SharedPreferences.OnSharedPreferenceChangeListener{
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint, mIconPaint;
@@ -153,8 +155,10 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mDatePaint = createTextPaint(resources.getColor(R.color.digital_text), NORMAL_TYPEFACE);
 
             mCalendar = Calendar.getInstance();
-            mHighText = mLowText = "69°";
-            mWeatherId = 951;
+            int[] todayWeather = SunshineWatchFacePreferences.getTodayWeather(getApplicationContext());
+            mWeatherId = todayWeather[0];
+            mHighText = todayWeather[1]+"°"; //string format
+            mLowText = todayWeather[2]+"°";  //string format
             mIcon = BitmapFactory.decodeResource(getResources(), getSmallArtResourceIdForWeatherCondition(mWeatherId));
             mIcon = Bitmap.createScaledBitmap(mIcon,
                     (int) getResources().getDimension(R.dimen.image_size),
@@ -370,18 +374,16 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                         posX - getResources().getDimension(R.dimen.image_end_padding),
                         bounds.centerY()+ getResources().getDimension(R.dimen.image_top_padding),
                         mIconPaint);
-                text = mHighText;
-                posX = (float) (posX + (getResources().getDimension(R.dimen.image_size)/2) + (mHighPaint.measureText(text)*0.25));
-                canvas.drawText(text,
+                posX = (float) (posX + (getResources().getDimension(R.dimen.image_size)/2) + (mHighPaint.measureText(mHighText)*0.25));
+                canvas.drawText(mHighText,
                         posX,
                         bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
                         mHighPaint
                 );
-                text = mLowText;
                 posX = posX +
-                        (mLowPaint.measureText(text)) +
+                        (mLowPaint.measureText(mLowText)) +
                         getResources().getDimension(R.dimen.temp_inner_spacing);
-                canvas.drawText(text,
+                canvas.drawText(mLowText,
                         posX,
                         bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
                         mLowPaint
@@ -420,6 +422,18 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
         }
+
+        @Override
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+            mWeatherId = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_WEATHER_ID, mWeatherId);
+            int high = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_HIGH, Integer.parseInt(mHighText));
+            int low = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_LOW, Integer.parseInt(mLowText));
+            mHighText = high+"";
+            if (BuildConfig.DEBUG){
+                Log.d(TAG, "onSharedPreferenceChanged: New weather info to be draw.");
+            }
+            invalidate();
+        }
     }
 
     /**
@@ -433,7 +447,20 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             if (BuildConfig.DEBUG) {
                 Log.d(TAG, "onMessageReceived: "+messageEvent.getPath());
             }
+            int[] todayWeather = weatherToInt(messageEvent.getPath());
+            SunshineWatchFacePreferences.setTodayWeather(this, todayWeather[0], todayWeather[1], todayWeather[2]);
 
+        }
+
+        private int[] weatherToInt(String message) {
+            int[] ret = new int[3];
+            StringTokenizer stringTokenizer = new StringTokenizer(message);
+            int i = 0;
+            while (stringTokenizer.hasMoreTokens()){
+                ret[i] = Integer.parseInt(stringTokenizer.nextToken());
+                i++;
+            }
+            return ret;
         }
     }
 }
