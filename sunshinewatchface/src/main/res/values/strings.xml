@@ -1,5 +1,12 @@
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!--App Name-->
     <string name="app_name">Sunshine WatchFace</string>
-    <string name="message">Watch face tapped</string>
+    <!--WatchFace name-->
     <string name="my_digital_name">Sunshine</string>
+    <!--Temperature format-->
+    <string name="format_temperature" translatable="false"><xliff:g id="temp">%1$s</xliff:g>\u00B0</string>
+    <!--Shared preferences-->
+    <string name="pref_today_weather_id" translatable="false">today_weather_id</string>
+    <string name="pref_today_high" translatable="false">today_high</string>
+    <string name="pref_today_low" translatable="false">today_low</string>
 </resources>

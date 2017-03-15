@@ -42,18 +42,24 @@ public class TodayWeatherSender implements GoogleApiClient.ConnectionCallbacks {
     public boolean connectAndSend(){
         mClient.connect();
         if (mClient.isConnected()) {
-            Log.d(TAG, "TodayWeatherSender: Successful.");
+            if (BuildConfig.DEBUG){
+                Log.d(TAG, "TodayWeatherSender: Successful.");
+            }
             return true;
         }
         else {
-            Log.d(TAG, "TodayWeatherSender: Failed.");
+            if (BuildConfig.DEBUG){
+                Log.d(TAG, "TodayWeatherSender: Failed.");
+            }
             return false;
         }
     }
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        Log.d(TAG, "onConnected: Connected.");
+        if (BuildConfig.DEBUG){
+            Log.d(TAG, "onConnected: Connected.");
+        }
         retrieveDeviceNode();
     }
 

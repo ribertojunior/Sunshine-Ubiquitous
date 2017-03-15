@@ -385,7 +385,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                         posX,
                         bounds.centerY()+ getResources().getDimension(R.dimen.image_top_padding),
                         mIconPaint);
-                text = mHighText+"°";//string format
+                text = getApplicationContext().getString(R.string.format_temperature, mHighText);
                 posX = (float) (posX +
                         (getResources().getDimension(R.dimen.image_size)/2) +
                         (mHighPaint.measureText("99")*0.25)) +
@@ -396,7 +396,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                         bounds.centerY()+ getResources().getDimension(R.dimen.temp_top_padding),
                         mHighPaint
                 );
-                text = mLowText+"°"; //string format
+                text = getApplicationContext().getString(R.string.format_temperature,mLowText);
                 posX = posX +
                         (mLowPaint.measureText("99°")) +
                         getResources().getDimension(R.dimen.temp_inner_spacing);
@@ -442,9 +442,9 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
         @Override
         public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
-            mWeatherId = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_WEATHER_ID, mWeatherId);
-            int high = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_HIGH, Integer.parseInt(mHighText));
-            int low = sharedPreferences.getInt(SunshineWatchFacePreferences.PREF_TODAY_LOW, Integer.parseInt(mLowText));
+            mWeatherId = sharedPreferences.getInt(getString(R.string.pref_today_weather_id), mWeatherId);
+            int high = sharedPreferences.getInt(getString(R.string.pref_today_high), Integer.parseInt(mHighText));
+            int low = sharedPreferences.getInt(getString(R.string.pref_today_low), Integer.parseInt(mLowText));
             mHighText = high+"";
             mLowText = low+"";
             mIcon = BitmapFactory.decodeResource(getResources(), getSmallArtResourceIdForWeatherCondition(mWeatherId));
